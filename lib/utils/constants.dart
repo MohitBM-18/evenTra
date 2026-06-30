@@ -3,11 +3,12 @@
 
 class Constants {
   static const String appName = 'evenTra';
-  static const String appTagline = 'Events with exTra efforts';
+  static const String appTagline = 'EVENTS WITH EXTRA EFFORTS';
   static const String universityName = 'Christ University';
 
   // Route Names
   static const String splashRoute = '/';
+  static const String onboardingRoute = '/onboarding';
   static const String loginRoute = '/login';
   static const String roleSelectionRoute = '/role_selection';
   static const String homeRoute = '/home';

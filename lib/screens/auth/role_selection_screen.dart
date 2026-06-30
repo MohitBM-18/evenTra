@@ -5,6 +5,8 @@ import '../../theme/app_theme.dart';
 import '../../models/enums.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/constants.dart';
+import '../../widgets/app_card.dart';
+import '../../widgets/primary_button.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -17,123 +19,119 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   UserRole? _selectedRole;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentUser != null) {
+        setState(() {
+          _selectedRole = authProvider.currentUser!.role;
+        });
+      }
+    });
+  }
+
+  void _handleContinue() {
+    if (_selectedRole != null) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      authProvider.selectRole(_selectedRole!);
+      Navigator.pushReplacementNamed(context, Constants.homeRoute);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final availableRoles = [
+      UserRole.studentCoordinator,
+      UserRole.facultyCoordinator,
+      UserRole.hod,
+      UserRole.venueIncharge,
+    ];
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: const Text('Select Your Role'),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
-              ShaderMask(
-                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-                child: Text(
-                  'Choose Your Role',
-                  style: GoogleFonts.outfit(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+              Text(
+                'How are you using evenTra?',
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textColor(context),
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Select how you\'ll use VenueX',
+                'Your role determines what actions you can perform in the app.',
                 style: GoogleFonts.inter(
                   fontSize: 16,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.secondaryTextColor(context),
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 32),
               Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  children: UserRole.values
-                      .where((role) {
-                        if (role == UserRole.superAdmin) {
-                          final email = Provider.of<AuthProvider>(context, listen: false)
-                                  .currentUser
-                                  ?.email
-                                  .toLowerCase() ??
-                              '';
-                          return email == 'mohitbm28@gmail.com';
-                        }
-                        return true;
-                      })
-                      .map((role) => _buildRoleCard(role))
-                      .toList(),
+                child: ListView.separated(
+                  itemCount: availableRoles.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final role = availableRoles[index];
+                    final isSelected = _selectedRole == role;
+
+                    return AppCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      backgroundColor: isSelected
+                          ? AppTheme.primaryColor(context).withOpacity(0.1)
+                          : AppTheme.cardColor(context),
+                      onTap: () {
+                        setState(() {
+                          _selectedRole = role;
+                        });
+                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            role.icon,
+                            size: 28,
+                            color: isSelected
+                                ? AppTheme.primaryColor(context)
+                                : AppTheme.secondaryTextColor(context),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              role.displayName,
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected
+                                    ? AppTheme.primaryColor(context)
+                                    : AppTheme.textColor(context),
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor(context)),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),
-              Container(
-                decoration: _selectedRole != null ? AppTheme.gradientDecoration() : null,
-                child: ElevatedButton(
-                  onPressed: _selectedRole != null
-                      ? () {
-                          Provider.of<AuthProvider>(context, listen: false).selectRole(_selectedRole!);
-                          Navigator.pushReplacementNamed(context, Constants.homeRoute);
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedRole != null ? Colors.transparent : Colors.grey[800],
-                    shadowColor: Colors.transparent,
-                  ),
-                  child: Text(
-                    'Continue',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+              PrimaryButton(
+                text: 'Continue',
+                onPressed: _selectedRole != null ? _handleContinue : null,
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleCard(UserRole role) {
-    final isSelected = _selectedRole == role;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedRole = role;
-        });
-      },
-      child: Container(
-        decoration: AppTheme.glassDecoration().copyWith(
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryCyan : Colors.white.withOpacity(0.1),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              role.icon,
-              size: 32,
-              color: isSelected ? AppTheme.primaryCyan : AppTheme.textSecondary,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              role.displayName,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? AppTheme.primaryCyan : AppTheme.textPrimary,
-              ),
-            ),
-          ],
         ),
       ),
     );

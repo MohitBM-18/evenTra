@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../../providers/booking_provider.dart';
-import '../../widgets/glass_card.dart';
-
+import '../../providers/auth_provider.dart';
 import '../../models/enums.dart';
+import '../../models/booking_model.dart';
+import '../../widgets/data_table_card.dart';
+import '../../widgets/status_chip.dart';
+import '../../utils/constants.dart';
 
 class BookingRequestsScreen extends StatelessWidget {
   const BookingRequestsScreen({super.key});
@@ -13,106 +15,63 @@ class BookingRequestsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
-    final pendingRequests = bookingProvider.pendingBookings;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+
+    if (user == null) return const Scaffold(body: Center(child: Text('Not logged in')));
+
+    // Filter logic based on role
+    List<BookingModel> requests = [];
+    if (user.role == UserRole.superAdmin) {
+      requests = bookingProvider.bookings; // Sees all
+    } else if (user.role == UserRole.facultyCoordinator) {
+      requests = bookingProvider.pendingFacultyBookings.where((b) => b.clubOrDepartment == user.department).toList();
+    } else if (user.role == UserRole.hod) {
+      requests = bookingProvider.pendingHodBookings.where((b) => b.clubOrDepartment == user.department).toList();
+    } else if (user.role == UserRole.venueIncharge) {
+      requests = bookingProvider.pendingVenueBookings; // Sees all pending venue
+    }
+
+    // Sort by most recent request first
+    requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Booking Requests', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: const Text('Manage Requests'),
       ),
-      body: pendingRequests.isEmpty
-          ? Center(
-              child: Text(
-                'No pending booking requests.',
-                style: GoogleFonts.inter(color: AppTheme.textSecondary),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pendingRequests.length,
-              itemBuilder: (context, idx) {
-                final req = pendingRequests[idx];
-                
-                String approveBtnText = 'Approve';
-                if (req.approvalStage == ApprovalStage.submitted) {
-                  approveBtnText = 'Approve as Coordinator';
-                } else if (req.approvalStage == ApprovalStage.coordinatorApproved) {
-                  approveBtnText = 'Approve as HOD';
-                } else if (req.approvalStage == ApprovalStage.hodApproved) {
-                  approveBtnText = 'Final Approve (In-Charge)';
-                }
-
-                return GlassCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              req.eventName,
-                              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Text(
-                            req.clubOrDepartment,
-                            style: GoogleFonts.inter(fontSize: 12, color: AppTheme.primaryCyan, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryCyan.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Stage: ${req.approvalStage.displayName}',
-                          style: GoogleFonts.inter(fontSize: 12, color: AppTheme.primaryCyan, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('Venue: ${req.auditoriumName}', style: GoogleFonts.inter(color: AppTheme.textSecondary)),
-                      Text('Date: ${req.date.toLocal().toString().split(' ')[0]}', style: GoogleFonts.inter(color: AppTheme.textSecondary)),
-                      Text('Time: ${req.startTime} - ${req.endTime}', style: GoogleFonts.inter(color: AppTheme.textSecondary)),
-                      Text('Organizer: ${req.userName}', style: GoogleFonts.inter(color: AppTheme.textSecondary)),
-                      if (req.guestDetails.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text('Chief Guest: ${req.guestDetails}', style: GoogleFonts.inter(color: AppTheme.textSecondary, fontStyle: FontStyle.italic)),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              bookingProvider.rejectBooking(req.id, 'Rejected by Admin');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Booking rejected.')),
-                              );
-                            },
-                            child: const Text('Reject', style: TextStyle(color: AppTheme.error)),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              bookingProvider.approveBooking(req.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Booking progressed: ${req.approvalStage.displayName}')),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                            child: Text(approveBtnText),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: DataTableCard(
+            title: 'Actionable Requests',
+            columns: const [
+              DataColumn(label: Text('ID')),
+              DataColumn(label: Text('Event')),
+              DataColumn(label: Text('Venue')),
+              DataColumn(label: Text('Date')),
+              DataColumn(label: Text('Status')),
+              DataColumn(label: Text('Action')),
+            ],
+            rows: requests.map((booking) => DataRow(
+              cells: [
+                DataCell(Text(booking.bookingId, style: const TextStyle(fontSize: 12))),
+                DataCell(Text(booking.eventName)),
+                DataCell(Text(booking.auditoriumName)),
+                DataCell(Text(DateFormat('MMM d, y').format(booking.date))),
+                DataCell(StatusChip(status: booking.status)),
+                DataCell(
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, Constants.bookingDetailRoute, arguments: booking.id);
+                    },
+                    child: const Text('Review'),
+                  )
+                ),
+              ],
+            )).toList(),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -27,7 +27,7 @@ void main() {
           ChangeNotifierProvider(create: (_) => HelpProvider()),
           ChangeNotifierProvider(create: (_) => LostFoundProvider()),
         ],
-        child: const VenueXApp(),
+        child: const EvenTraApp(),
       ),
     );
 

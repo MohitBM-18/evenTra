@@ -50,6 +50,11 @@ class InchargeProvider extends ChangeNotifier {
 
   List<InchargeModel> get incharges => _incharges;
 
+  /// Get incharge by auditoriumId (matches auditorium name to incharge's assignedVenue)
+  InchargeModel? getInchargeForVenue(String auditoriumId) {
+    return null; // Logic moved to AuditoriumModel directly
+  }
+
   void addIncharge(InchargeModel incharge) {
     _incharges.add(incharge);
     notifyListeners();

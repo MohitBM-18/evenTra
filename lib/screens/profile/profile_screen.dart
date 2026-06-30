@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../providers/booking_provider.dart';
-import '../../widgets/glass_card.dart';
+import '../../providers/notification_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_card.dart';
 import '../../utils/constants.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -13,84 +15,138 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final user = authProvider.currentUser;
-    final bookingProvider = Provider.of<BookingProvider>(context);
-    final bookingsCount = bookingProvider.userBookings(user?.id ?? 'u1').length;
+
+    if (user == null) return const Center(child: Text('Not logged in'));
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24.0),
         children: [
-          Center(
-            child: Column(
+          Text('Profile', style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+          const SizedBox(height: 24),
+          
+          // User Info Card
+          AppCard(
+            padding: const EdgeInsets.all(24),
+            child: Row(
               children: [
-                const SizedBox(height: 20),
                 CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppTheme.primaryPurple,
-                  child: Text(
-                    user?.name.substring(0, 1).toUpperCase() ?? 'U',
-                    style: GoogleFonts.outfit(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                  radius: 36,
+                  backgroundColor: AppTheme.primaryColor(context).withOpacity(0.1),
+                  backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
+                  child: user.profileImageUrl == null 
+                    ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U', style: TextStyle(fontSize: 24, color: AppTheme.primaryColor(context), fontWeight: FontWeight.bold))
+                    : null,
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user.name, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(user.email, style: GoogleFonts.inter(fontSize: 14, color: AppTheme.secondaryTextColor(context))),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor(context).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(user.role.displayName, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primaryColor(context))),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  user?.name ?? 'User Name',
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user?.email ?? 'email@christuniversity.in',
-                  style: GoogleFonts.inter(color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                Chip(
-                  label: Text(user?.role.displayName ?? 'Student Coordinator'),
-                  backgroundColor: AppTheme.primaryCyan.withOpacity(0.2),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 32),
-          GlassCard(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+
+          // Settings Section
+          Text('Preferences', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
               children: [
-                _buildStatItem('Total Bookings', bookingsCount.toString()),
-                _buildStatItem('Department', user?.department ?? 'BCA'),
+                SwitchListTile(
+                  title: Text('Dark Mode', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
+                  secondary: const Icon(Icons.dark_mode_rounded),
+                  value: themeProvider.isDarkMode,
+                  onChanged: (val) => themeProvider.toggleTheme(),
+                  activeColor: AppTheme.primaryColor(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.notifications_rounded),
+                  title: Text('Notification Settings', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    // Open device settings or custom screen
+                  },
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          ListTile(
-            leading: const Icon(Icons.settings, color: AppTheme.primaryCyan),
-            title: const Text('Change Role'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, Constants.roleSelectionRoute);
-            },
+          const SizedBox(height: 32),
+
+          // Support Section
+          Text('Support', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.help_rounded),
+                  title: Text('Help & Support', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.pushNamed(context, '/help_requests'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_rounded),
+                  title: Text('Privacy Policy', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {},
+                ),
+              ],
+            ),
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: AppTheme.error),
-            title: const Text('Logout'),
-            onTap: () {
-              authProvider.logout();
-              Navigator.pushReplacementNamed(context, Constants.loginRoute);
-            },
+          const SizedBox(height: 48),
+
+          // Logout Button
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                final bp = Provider.of<BookingProvider>(context, listen: false);
+                final np = Provider.of<NotificationProvider>(context, listen: false);
+                bp.clearBookings();
+                np.clearUser();
+                authProvider.logout();
+                Navigator.pushReplacementNamed(context, Constants.loginRoute);
+              },
+              icon: const Icon(Icons.logout_rounded, color: AppTheme.error),
+              label: Text('Log Out', style: GoogleFonts.inter(color: AppTheme.error, fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.error),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              'evenTra v1.0.0\nChrist University',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 12, color: AppTheme.secondaryTextColor(context)),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryCyan)),
-        const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary)),
-      ],
     );
   }
 }
